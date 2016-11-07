@@ -129,47 +129,45 @@ int main(int argc, char * argv[]) {
     op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
     if (op_result == -1) {
         fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-        //flashgo::~flashgo();
         return -1;
     }else{
         int isEAI = drv->getEAI();
         if(isEAI != 0){
-	    drv->disconnect();
-	    if(115200 == (u_int32_t)serial_baudrate){
-		drv->setScanDataProtocol(0);
-		serial_baudrate=230400;
-	        op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
-	    	if (op_result == -1) {
-		    fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-		    return -1;
-	        }else{
-		    isEAI = drv->getEAI();
-        	    if(isEAI != 0){
-			fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-			return -1;
-		    }
-		}
-	    }else{
-		drv->setScanDataProtocol(1);
-		serial_baudrate=115200;
-		op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
-	    	if (op_result == -1) {
-		    fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-		    return -1;
-	        }else{
-		    isEAI = drv->getEAI();
-        	    if(isEAI != 0){
-			fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-			return -1;
-		    }
-		}
-	    }
+			drv->disconnect();
+			if(115200 == (u_int32_t)serial_baudrate){
+				drv->setScanDataProtocol(0);
+				serial_baudrate=230400;
+				op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
+				if (op_result == -1) {
+					fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+					return -1;
+				}else{
+					isEAI = drv->getEAI();
+					if(isEAI != 0){
+						fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+						return -1;
+					}
+				}
+			}else{
+				drv->setScanDataProtocol(1);
+				serial_baudrate=115200;
+				op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
+	    		if (op_result == -1) {
+					fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+					return -1;
+				}else{
+					isEAI = drv->getEAI();
+        			if(isEAI != 0){
+						fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+						return -1;
+					}
+				}
+			}
         }
     }
 
     // check health...
     if (!checkFlashLidarHealth(drv)) {
-        //flashgo::~flashgo();
         return -1;
     }
 
@@ -179,6 +177,7 @@ int main(int argc, char * argv[]) {
     ros::Time start_scan_time;
     ros::Time end_scan_time;
     double scan_duration;
+	ros::Rate rate(60);
     while (ros::ok()) {
 
         node_info nodes[360*2];
@@ -246,7 +245,7 @@ int main(int argc, char * argv[]) {
                              frame_id);
             }
         }
-
+		rate.sleep();
         ros::spinOnce();
     }
 
