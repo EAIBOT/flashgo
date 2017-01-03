@@ -10,7 +10,7 @@
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"
 
-#include "flashgo.h" 
+#include "flashgo.h"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -28,7 +28,7 @@ void publish_scan(ros::Publisher *pub,
                   size_t node_count, ros::Time start,
                   double scan_time,
                   float angle_min, float angle_max, 
-                  std::string frame_id, std::vector<int> ignore_array, double ignore_value)
+                  std::string frame_id, std::vector<int> ignore_array , double ignore_value)
 {
     static int scan_count = 0;
     sensor_msgs::LaserScan scan_msg;
@@ -60,7 +60,7 @@ void publish_scan(ros::Publisher *pub,
 
     if(ignore_array.size() != 0)
     {
-        for (size_t i = 0; i < node_count; i++) {
+	for (size_t i = 0; i < node_count; i++) {
             float angle = (float)((nodes[i].angle_q6_checkbit >> LIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f);
             for(unsigned int j = 0; j < ignore_array.size();j = j+2){
                if((ignore_array[j] < angle) && (angle <= ignore_array[j+1])){
@@ -96,6 +96,7 @@ bool checkFlashLidarHealth(Flashgo * drv)
     }
 }
 
+
 std::vector<int> split(const std::string &s, char delim) {
     std::vector<int> elems;
     std::stringstream ss(s);
@@ -106,14 +107,12 @@ std::vector<int> split(const std::string &s, char delim) {
     return elems;
 }
 
-
 int main(int argc, char * argv[]) {
     ros::init(argc, argv, "flash_lidar_node");
 
     std::string serial_port;
     int serial_baudrate;
     std::string frame_id;
-    bool inverted;
     bool angle_compensate;
 
     std::string list;
@@ -123,23 +122,22 @@ int main(int argc, char * argv[]) {
     ros::NodeHandle nh;
     ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
     ros::NodeHandle nh_private("~");
-    nh_private.param<std::string>("serial_port", serial_port, "/dev/ttyUSB0"); 
-    nh_private.param<int>("serial_baudrate", serial_baudrate, 230400); 
+    nh_private.param<std::string>("serial_port", serial_port, "/dev/ttyACM0"); 
+    nh_private.param<int>("serial_baudrate", serial_baudrate, 115200); 
     nh_private.param<std::string>("frame_id", frame_id, "laser_frame");
     nh_private.param<bool>("angle_compensate", angle_compensate, "true");
     nh_private.param<std::string>("ignore_array",list,"");
     nh_private.param<double>("ignore_value", ignore_value, 0.1);
 
-    ignore_array = split(list , ',');
-    if(ignore_array.size() % 2 ){
+    ignore_array = split(list ,',');
+    if(ignore_array.size()%2){
         ROS_ERROR_STREAM("ignore array is odd need be even");
     }
 
-    for(unsigned int i =0 ; i < ignore_array.size();i++)
-    {
+    for(unsigned int i =0 ; i < ignore_array.size();i++){
         if(ignore_array[i] < 0 ||ignore_array[i] > 360){
             ROS_ERROR_STREAM("ignore array should be 0<=  <=360");
-	}
+        }
     }
 
     u_int32_t op_result;
@@ -151,11 +149,7 @@ int main(int argc, char * argv[]) {
         fprintf(stderr, "Create Driver fail, exit\n");
         return -2;
     }
-    if (serial_baudrate == 115200 ) {
-        drv->setScanDataProtocol(1);
-    }else{
-	drv->setScanDataProtocol(0);
-    }
+
     // make connection...
     op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
     if (op_result == -1) {
@@ -165,34 +159,16 @@ int main(int argc, char * argv[]) {
         int isEAI = drv->getEAI();
         if(isEAI != 0){
 	    drv->disconnect();
-	    if(115200 == (u_int32_t)serial_baudrate){
-                drv->setScanDataProtocol(0);
-		serial_baudrate=230400;
-	        op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
-	    	if (op_result == -1) {
-		    fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+            op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
+    	    if (op_result == -1) {
+	        fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+	        return -1;
+            }else{
+	        isEAI = drv->getEAI();
+	        if(isEAI != 0){
+		    fprintf(stderr, "EAI Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
 		    return -1;
-	        }else{
-		    isEAI = drv->getEAI();
-        	    if(isEAI != 0){
-			fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-			return -1;
-		    }
-		}
-	    }else{
-		drv->setScanDataProtocol(1);
-		serial_baudrate=115200;
-		op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
-	    	if (op_result == -1) {
-		    fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-		    return -1;
-	        }else{
-		    isEAI = drv->getEAI();
-        	    if(isEAI != 0){
-	                fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-			return -1;
-		    }
-		}
+	        }
 	    }
         }
     }
@@ -208,14 +184,12 @@ int main(int argc, char * argv[]) {
     ros::Time start_scan_time;
     ros::Time end_scan_time;
     double scan_duration;
-
     ros::Rate rate(60);
 
     const int angle_compensate_nodes_count = NODE_COUNTS;
     node_info angle_compensate_nodes[angle_compensate_nodes_count];
 
     while (ros::ok()) {
-
         node_info nodes[360*2];
         size_t   count = _countof(nodes);
 
@@ -226,7 +200,6 @@ int main(int argc, char * argv[]) {
 
         if (op_result == 0) {
             op_result = drv->ascendScanData(nodes, count);
-
             float angle_min = DEG2RAD(0.0f);
             float angle_max = DEG2RAD(360.0f);
             if (op_result == 0) {
@@ -246,11 +219,11 @@ int main(int argc, char * argv[]) {
                             }
                         }
                     }
-  
+
                     publish_scan(&scan_pub, angle_compensate_nodes, angle_compensate_nodes_count,
                              start_scan_time, scan_duration,  
                              angle_min, angle_max, 
-                             frame_id, ignore_array, ignore_value);
+                             frame_id,ignore_array,ignore_value);
                 } else {
                     int start_node = 0, end_node = 0;
                     int i = 0;
@@ -265,9 +238,9 @@ int main(int argc, char * argv[]) {
                     angle_max = DEG2RAD((float)(nodes[end_node].angle_q6_checkbit >> LIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f);
 
                     publish_scan(&scan_pub, &nodes[start_node], end_node-start_node +1, 
-                             start_scan_time, scan_duration,  
+                             start_scan_time, scan_duration, 
                              angle_min, angle_max, 
-                             frame_id, ignore_array, ignore_value);
+                             frame_id,ignore_array,ignore_value);
                }
             } else if (op_result == -2) {
                 // All the data is invalid, just publish them
@@ -275,9 +248,9 @@ int main(int argc, char * argv[]) {
                 float angle_max = DEG2RAD(360.0f);
 
                 publish_scan(&scan_pub, nodes, count, 
-                             start_scan_time, scan_duration, 
+                             start_scan_time, scan_duration,  
                              angle_min, angle_max, 
-                             frame_id, ignore_array, ignore_value);
+                             frame_id,ignore_array,ignore_value);
             }
         }
         rate.sleep();
