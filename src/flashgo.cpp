@@ -10,6 +10,7 @@ Flashgo::Flashgo()
 {
     isConnected = false;
     isScanning = false;
+    scan_data_protocol = 0;
     pthread_mutex_init(&_lock, NULL);
 }
 
@@ -492,8 +493,6 @@ int Flashgo::cacheScanData()
     return 0;
 }
 
-#if(ScanDataProtocol == 0)
-
 int Flashgo::waitScanData(node_info * nodebuffer, size_t & count, u_int32_t timeout)
 {
     if (!isConnected) {
@@ -508,9 +507,16 @@ int Flashgo::waitScanData(node_info * nodebuffer, size_t & count, u_int32_t time
 
     while ((waitTime = getms() - startTs) <= timeout && recvNodeCount < count) {
         node_info node;
-        if ((ans = waitNode(&node, timeout - waitTime)) != 0) {
-            return ans;
+        if(scan_data_protocol == 0){
+            if ((ans = waitNode(&node, timeout - waitTime)) != 0) {
+                return ans;
+            }
+        }else{
+            if ((ans = waitPackage(&node, timeout - waitTime)) != 0) {
+                return ans;
+            }
         }
+
         nodebuffer[recvNodeCount++] = node;
         if (recvNodeCount == count) {
             return 0;
@@ -578,8 +584,6 @@ int Flashgo::waitNode(node_info * node, u_int32_t timeout)
 
     return -1;
 }
-
-#else
 
 int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
 {
@@ -753,34 +757,6 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
     return 0;
 }
 
-int Flashgo::waitScanData(node_info * nodebuffer, size_t & count, u_int32_t timeout)
-{
-    if (!isConnected) {
-        count = 0;
-        return -2;
-    }
-
-    size_t   recvNodeCount =  0;
-    u_int32_t     startTs = getms();
-    u_int32_t     waitTime;
-    int ans;
-
-    while ((waitTime = getms() - startTs) <= timeout && recvNodeCount < count) {
-        node_info node;
-        if ((ans = this->waitPackage(&node, timeout - waitTime)) != 0) {
-            return ans;
-        }
-        nodebuffer[recvNodeCount++] = node;
-
-        if (recvNodeCount == count) {
-            return 0;
-        }
-    }
-    count = recvNodeCount;
-    return -1;
-}
-
-#endif
 
 int Flashgo::grabScanData(node_info * nodebuffer, size_t & count)
 {
@@ -914,4 +890,47 @@ void Flashgo::releaseThreadLock()
 {
     pthread_mutex_unlock(&_lock);
     pthread_mutex_destroy(&_lock);
+}
+
+void Flashgo::setScanDataProtocol(int protocol)
+{
+    scan_data_protocol = protocol;
+}
+
+int Flashgo::getEAI( u_int32_t timeout)
+{
+    int  ans;
+
+    if (!isConnected) return -2;
+
+    disableDataGrabbing();
+
+    {
+        if ((ans = sendCommand(LIDAR_CMD_GET_EAI)) != 0) {
+            return ans;
+        }
+
+        lidar_ans_header response_header;
+        if ((ans = waitResponseHeader(&response_header, timeout)) != 0) {
+            return ans;
+        }
+
+        if (response_header.size < 3) {
+            return -3;
+        }
+
+        if (waitForData(response_header.size, timeout) != 0) {
+            return -1;
+        }
+
+        char eaiInfo[3]={0};
+        getData(reinterpret_cast<u_int8_t *>(&eaiInfo), sizeof(eaiInfo));
+
+	//fprintf(stderr, " eaiInfo : %s \n" ,eaiInfo);
+        if(eaiInfo[0]=='E' && eaiInfo[1]=='A' && eaiInfo[2]=='I'){
+            return 0;
+        }
+
+    }
+    return -2;
 }

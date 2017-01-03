@@ -28,19 +28,20 @@
 #include <vector>
 
 
-#define LIDAR_CMD_STOP                              0x25
-#define LIDAR_CMD_SCAN                             0x20
-#define LIDAR_CMD_FORCE_SCAN                0x21
+#define LIDAR_CMD_STOP                      0x65
+#define LIDAR_CMD_SCAN                      0x60
+#define LIDAR_CMD_FORCE_SCAN                0x61
 #define LIDAR_CMD_FORCE_STOP                0x00
-#define LIDAR_CMD_GET_DEVICE_INFO       0x50
-#define LIDAR_CMD_GET_DEVICE_HEALTH  0x52
-#define LIDAR_ANS_TYPE_DEVINFO             0x4
-#define LIDAR_ANS_TYPE_DEVHEALTH        0x6
-#define LIDAR_CMD_SYNC_BYTE                  0xA5
-#define LIDAR_CMDFLAG_HAS_PAYLOAD    0x80
-#define LIDAR_ANS_SYNC_BYTE1                 0xA5
-#define LIDAR_ANS_SYNC_BYTE2                 0x5A
-#define LIDAR_ANS_TYPE_MEASUREMENT                0x81
+#define LIDAR_CMD_GET_EAI                   0x55
+#define LIDAR_CMD_GET_DEVICE_INFO           0x90
+#define LIDAR_CMD_GET_DEVICE_HEALTH         0x92
+#define LIDAR_ANS_TYPE_DEVINFO              0x4
+#define LIDAR_ANS_TYPE_DEVHEALTH            0x6
+#define LIDAR_CMD_SYNC_BYTE                 0xA5
+#define LIDAR_CMDFLAG_HAS_PAYLOAD           0x80
+#define LIDAR_ANS_SYNC_BYTE1                0xA5
+#define LIDAR_ANS_SYNC_BYTE2                0x5A
+#define LIDAR_ANS_TYPE_MEASUREMENT          0x81
 #define LIDAR_RESP_MEASUREMENT_SYNCBIT        (0x1<<0)
 #define LIDAR_RESP_MEASUREMENT_QUALITY_SHIFT  2
 #define LIDAR_RESP_MEASUREMENT_CHECKBIT       (0x1<<0)
@@ -50,8 +51,7 @@
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
 #endif
 
-#define ScanDataProtocol 0
-#define PrintfEnable 0
+
 #define PackageSampleMaxLngth 0x100
 typedef enum
 {
@@ -131,13 +131,12 @@ public:
     void simpleScanData(std::vector<scanDot> * scan_data , node_info *buffer, size_t count);
     int  lock(unsigned long timeout = 0xFFFFFFFF);
     void releaseThreadLock();
+    void setScanDataProtocol(int protocol);
+    int getEAI(u_int32_t timeout = DEFAULT_TIMEOUT);
 
 protected:
-#if(ScanDataProtocol == 0)
     int waitNode(node_info * node, u_int32_t timeout = DEFAULT_TIMEOUT);
-#else
     int waitPackage(node_info * node, u_int32_t timeout = DEFAULT_TIMEOUT);
-#endif
     int waitScanData(node_info * nodebuffer, size_t & count, u_int32_t timeout = DEFAULT_TIMEOUT);
     int cacheScanData();
     int sendCommand(u_int8_t cmd, const void * payload = NULL, size_t payloadsize = 0);
@@ -159,6 +158,8 @@ public:
     node_info      scan_node_buf[2048];
     size_t              scan_node_count;
     pthread_mutex_t _lock;
+
+    int scan_data_protocol ;
 };
 
 #endif // FLASHGO_H
