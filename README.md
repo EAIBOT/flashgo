@@ -11,6 +11,7 @@ How to build FLASH LIDAR ros package
     2) Running catkin_make to build flashgo_node and flashgo_client
     3) Create the name "/dev/flashlidar" for flash lidar
     --$ roscd flashgo/startup
+    --$ sudo chmod 777 ./*
     --$ sudo sh initenv.sh
 
 How to run FLASH LIDAR ros package
@@ -19,7 +20,7 @@ There're two ways to run FLASH LIDAR ros package
 
 1. Run FLASH LIDAR node and view in the rviz
 ------------------------------------------------------------
-roslaunch flashgo view_lidar.launch
+roslaunch flashgo lidar_view.launch
 
 You should see FLASH LIDAR's scan result in the rviz.
 

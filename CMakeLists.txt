@@ -130,8 +130,8 @@ include_directories(
 ## Declare a C++ executable
 # add_executable(flashgo_node src/flashgo_node.cpp)
 
-add_executable(flashgo_node src/flashgo_node.cpp  src/flashgo.cpp)
-add_executable(flashgo_client src/flashgo_client.cpp)
+add_executable(flashgo_node src/node.cpp  src/flashgo.cpp)
+add_executable(flashgo_client src/client.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

@@ -21,7 +21,10 @@
 
 #define NODE_COUNTS 720
 #define EACH_ANGLE 0.5
-#define DEG2RAD(x) ((x)*M_PI/180.)
+#define DELAY_SECONDS 10
+#define DEG2RAD(x) ((x)*M_PI/180.0)
+
+Flashgo * drv = NULL;
 
 void publish_scan(ros::Publisher *pub, 
                   node_info *nodes, 
@@ -81,7 +84,7 @@ bool checkFlashLidarHealth(Flashgo * drv)
 
     op_result = drv->getHealth(healthinfo);
     if (op_result == 0) { 
-        printf("Flash Lidar running correctly ! The health status is %d\n", healthinfo.status);
+        printf("EAI INFO : Now Flash Lidar is running correctly ! .......\n");
         
         if (healthinfo.status == 2) {
             fprintf(stderr, "Error, Flash Lidar internal error detected. Please reboot the device to retry.\n");
@@ -91,7 +94,7 @@ bool checkFlashLidarHealth(Flashgo * drv)
         }
 
     } else {
-        fprintf(stderr, "Error, cannot retrieve Flash Lidar health code: %x\n", op_result);
+        fprintf(stderr, "Error,  Flash Lidar is unhealthy ! The code of status : %x\n", op_result);
         return false;
     }
 }
@@ -143,7 +146,7 @@ int main(int argc, char * argv[]) {
     u_int32_t op_result;
 
     // create the driver instance
-    Flashgo * drv = new Flashgo();
+    drv = Flashgo::initDriver();
     
     if (!drv) {
         fprintf(stderr, "Create Driver fail, exit\n");
@@ -153,8 +156,28 @@ int main(int argc, char * argv[]) {
     // make connection...
     op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
     if (op_result == -1) {
-        fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-        return -1;
+        int seconds=0;
+        while(seconds <= DELAY_SECONDS){
+            sleep(2);//delay 2s 
+            seconds = seconds + 2;
+            drv->disconnect();
+            op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
+            fprintf(stdout, "EAI Info, connect to the port %s  after %d s .\n", serial_port.c_str() , seconds);
+    	    if (op_result != -1) {
+	        int isEAI = drv->getEAI();
+	        if(isEAI != 0){
+		    fprintf(stderr, "EAI Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+		    return -1;
+	        }
+                break;
+	    }
+        }
+        
+        if(seconds > DELAY_SECONDS){
+            fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+            return -1;
+        }
+        
     }else{
         int isEAI = drv->getEAI();
         if(isEAI != 0){
@@ -258,6 +281,7 @@ int main(int argc, char * argv[]) {
     }
 
     drv->stop();
-    drv->disconnect();
+    printf("EAI INFO : Now Flash Lidar is stopping .......\n");
+    Flashgo::DestroyDriver(drv);
     return 0;
 }
