@@ -1,11 +1,13 @@
+
 /*
- *  FLASH LIDAR SYSTEM
- *  Flash Lidar ROS Node Client 
+ *  FLASH LIDAR System
+ *  Flash Lidar ROS Node client 
  *
- *  Copyright 2015 - 2017 EAI TEAM
+ *  Copyright 2015 - 2016 EAI Team
  *  http://www.eaibot.com
  * 
  */
+
 
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"

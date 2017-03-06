@@ -140,6 +140,11 @@ class Flashgo
 {
 public:
     Flashgo();
+    virtual ~Flashgo();
+    static Flashgo * initDriver();
+    static void DestroyDriver(Flashgo * drv);
+
+public:
     int connect(const char * port_path, u_int32_t baudrate);
     void disconnect();
     int getHealth(device_health & health, u_int32_t timeout = DEFAULT_TIMEOUT);

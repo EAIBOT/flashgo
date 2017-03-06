@@ -1,6 +1,6 @@
 <launch>
-  <node name="flashgo_node" pkg="flashgo" type="flashgo_node" output="screen">
-    <param name="serial_port"         type="string" value="/dev/flashlidar"/>  
+  <node name="flashgo_node"  pkg="flashgo"  type="flashgo_node" output="screen">
+    <param name="serial_port"         type="string" value="/dev/ttyACM0"/>  
     <param name="serial_baudrate"     type="int"    value="115200"/>
     <param name="frame_id"            type="string" value="laser_frame"/>
     <param name="angle_compensate"    type="bool"   value="true"/>
