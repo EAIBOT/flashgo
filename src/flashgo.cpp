@@ -801,12 +801,7 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
         (*node).sync_quality = Node_Default_Quality + Node_Sync;
     }
 
-    //(*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
-    //(*node).distance_q2 = package.packageSampleDistance[package_Sample_Index];
-
     if(CheckSunResult == true){
-	//(*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
-	//(*node).distance_q2 = package.packageSampleDistance[package_Sample_Index];
 
         (*node).distance_q2 = package.packageSampleDistance[package_Sample_Index];
 	    #if 1
