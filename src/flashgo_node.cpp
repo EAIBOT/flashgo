@@ -22,7 +22,7 @@
 #define NODE_COUNTS 720
 #define EACH_ANGLE 0.5
 #define DELAY_SECONDS 10
-#define DEG2RAD(x) ((x)*M_PI/180.0)
+#define DEG2RAD(x) ((x)*M_PI/180.)
 
 Flashgo * drv = NULL;
 
@@ -55,11 +55,7 @@ void publish_scan(ros::Publisher *pub,
     for (size_t i = 0; i < node_count; i++) {
         scan_msg.ranges[i] = (float)nodes[i].distance_q2/4.0f/1000;
         scan_msg.intensities[i] = (float) (nodes[i].sync_quality >> 2);
-        //if(scan_msg.ranges[i]!=0){
-        //    fprintf(stderr, "scan_msg.ranges[%d] : %f .\n" , (int)i , (float)scan_msg.ranges[i]);
-        //}
     }
-    //fprintf(stderr, "---------------------------------------------------\n");
 
     if(ignore_array.size() != 0)
     {
@@ -94,7 +90,7 @@ bool checkFlashLidarHealth(Flashgo * drv)
         }
 
     } else {
-        fprintf(stderr, "Error,  Flash Lidar is unhealthy ! The code of status : %x\n", op_result);
+        fprintf(stderr, "Error, cannot retrieve Flash Lidar health code: %x\n", op_result);
         return false;
     }
 }
@@ -145,7 +141,6 @@ int main(int argc, char * argv[]) {
 
     u_int32_t op_result;
 
-    // create the driver instance
     drv = Flashgo::initDriver();
     
     if (!drv) {
@@ -153,12 +148,11 @@ int main(int argc, char * argv[]) {
         return -2;
     }
 
-    // make connection...
     op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
     if (op_result == -1) {
         int seconds=0;
         while(seconds <= DELAY_SECONDS){
-            sleep(2);//delay 2s 
+            sleep(2);
             seconds = seconds + 2;
             drv->disconnect();
             op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
@@ -177,7 +171,6 @@ int main(int argc, char * argv[]) {
             fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
             return -1;
         }
-        
     }else{
         int isEAI = drv->getEAI();
         if(isEAI != 0){
@@ -196,12 +189,10 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    // check health...
     if (!checkFlashLidarHealth(drv)) {
         return -1;
     }
 
-    // start scan...
     drv->startScan();
 
     ros::Time start_scan_time;
@@ -250,7 +241,6 @@ int main(int argc, char * argv[]) {
                 } else {
                     int start_node = 0, end_node = 0;
                     int i = 0;
-                    // find the first valid node and last valid node
                     while (nodes[i++].distance_q2 == 0);
                     start_node = i-1;
                     i = count -1;
@@ -266,7 +256,6 @@ int main(int argc, char * argv[]) {
                              frame_id,ignore_array,ignore_value);
                }
             } else if (op_result == -2) {
-                // All the data is invalid, just publish them
                 float angle_min = DEG2RAD(0.0f);
                 float angle_max = DEG2RAD(360.0f);
 

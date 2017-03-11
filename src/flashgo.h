@@ -140,7 +140,7 @@ class Flashgo
 {
 public:
     Flashgo();
-    virtual ~Flashgo();
+    ~Flashgo();
     static Flashgo * initDriver();
     static void DestroyDriver(Flashgo * drv);
 
