@@ -66,7 +66,7 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: LidarLaserScan
+      Name: FlashLidarLaserScan
       Position Transformer: XYZ
       Queue Size: 1000
       Selectable: true
@@ -80,7 +80,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: laser_frame
+    Fixed Frame: laser
     Frame Rate: 30
   Name: root
   Tools:

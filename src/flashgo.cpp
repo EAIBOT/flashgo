@@ -6,16 +6,6 @@ size_t required_tx_cnt;
 size_t required_rx_cnt;
 u_int32_t _baudrate;
 
-Flashgo * Flashgo::initDriver()
-{
-    return new Flashgo();
-}
-
-void Flashgo::DestroyDriver(Flashgo * drv)
-{
-    delete drv;
-}
-
 Flashgo::Flashgo()
 {
     isConnected = false;
@@ -26,6 +16,16 @@ Flashgo::Flashgo()
 Flashgo::~Flashgo()
 {
     disconnect();
+}
+
+Flashgo * Flashgo::initDriver()
+{
+    return new Flashgo();
+}
+
+void Flashgo::DestroyDriver(Flashgo * drv)
+{
+    delete drv;
 }
 
 int Flashgo::connect(const char * port_path, u_int32_t baudrate)
