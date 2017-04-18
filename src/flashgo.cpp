@@ -507,95 +507,6 @@ int Flashgo::cacheScanData()
     return 0;
 }
 
-#if(ScanDataProtocol == 0)
-
-int Flashgo::waitScanData(node_info * nodebuffer, size_t & count, u_int32_t timeout)
-{
-    if (!isConnected) {
-        count = 0;
-        return -2;
-    }
-
-    size_t   recvNodeCount =  0;
-    u_int32_t     startTs = getms();
-    u_int32_t     waitTime;
-    int ans;
-
-    while ((waitTime = getms() - startTs) <= timeout && recvNodeCount < count) {
-        node_info node;
-        if ((ans = waitNode(&node, timeout - waitTime)) != 0) {
-            return ans;
-        }
-        nodebuffer[recvNodeCount++] = node;
-        if (recvNodeCount == count) {
-            return 0;
-        }
-    }
-    count = recvNodeCount;
-    return -1;
-}
-
-int Flashgo::waitNode(node_info * node, u_int32_t timeout)
-{
-    int  recvPos = 0;
-    u_int32_t startTs = getms();
-    u_int8_t  recvBuffer[sizeof(node_info)];
-    u_int8_t *nodeBuffer = (u_int8_t*)node;
-    u_int32_t waitTime;
-
-    while ((waitTime=getms() - startTs) <= timeout) {
-        size_t remainSize = sizeof(node_info) - recvPos;
-        size_t recvSize;
-
-        int ans = waitForData(remainSize, timeout-waitTime, &recvSize);
-        if (ans == -2) {
-            return -2;
-        }else if (ans == -1){
-            return -1;
-        }
-
-        if (recvSize > remainSize) recvSize = remainSize;
-
-        getData(recvBuffer, recvSize);
-
-        for (size_t pos = 0; pos < recvSize; ++pos) {
-            u_int8_t currentByte = recvBuffer[pos];
-            switch (recvPos) {
-            case 0:
-                {
-                    u_int8_t tmp = (currentByte>>1);
-                    if ( (tmp ^ currentByte) & 0x1 ) {
-
-                    } else {
-                        continue;
-                    }
-
-                }
-                break;
-            case 1:
-                {
-                    if (currentByte & LIDAR_RESP_MEASUREMENT_CHECKBIT) {
-
-                    } else {
-                        recvPos = 0;
-                        continue;
-                    }
-                }
-                break;
-            }
-            nodeBuffer[recvPos++] = currentByte;
-
-            if (recvPos == sizeof(node_info)) {
-                return 0;
-            }
-        }
-    }
-
-    return -1;
-}
-
-#else
-
 int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
 {
     int recvPos = 0;
@@ -647,42 +558,32 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
                 u_int8_t currentByte = recvBuffer[pos];
                 switch (recvPos) {
                 case 0:
-                    {
-                        if ( currentByte == (PH&0xFF) ) {
-
-                        } else {
-                            continue;
-                        }
-
-                    }
+					if ( currentByte == (PH&0xFF) ) {
+					} else {
+						continue;
+					}
                     break;
                 case 1:
-                    {
-                        CheckSunCal = PH;
-                        if ( currentByte == (PH>>8) ) {
-
-                        } else {
-                            recvPos = 0;
-                            continue;
-                        }
-                    }
+					CheckSunCal = PH;
+					if ( currentByte == (PH>>8) ) {
+					} else {
+						recvPos = 0;
+						continue;
+					}
                     break;
                 case 2:
-                    {
-                        SampleNumlAndCTCal = currentByte;
-                        if ((currentByte == CT_Normal) || (currentByte == CT_RingStart)){
-
-                        } else {
-                            recvPos = 0;
-                            continue;
-                        }
-                    }
+					SampleNumlAndCTCal = currentByte;
+					if ((currentByte == CT_Normal) || (currentByte == CT_RingStart)){
+					} else {
+						recvPos = 0;
+						continue;
+					}
                     break;
                 case 3:
                     SampleNumlAndCTCal += (currentByte*0x100);
                     package_Sample_Num = currentByte;
                     break;
-                   case 4:
+				case 4:
                     if (currentByte & LIDAR_RESP_MEASUREMENT_CHECKBIT) {
                         FirstSampleAngle = currentByte;
                     } else {
@@ -692,7 +593,7 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
                     break;
                 case 5:
                     FirstSampleAngle += currentByte*0x100;
-	            CheckSunCal ^= FirstSampleAngle;
+	                CheckSunCal ^= FirstSampleAngle;
                     FirstSampleAngle = FirstSampleAngle>>1;
                     break;
                 case 6:
@@ -723,14 +624,12 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
                         }
                     }
                     break;
-#if(CheckSum_Use)
                 case 8:
-		    CheckSun = currentByte;	
-		    break;
-		case 9:
-		    CheckSun += (currentByte*0x100);
-		    break;
-#endif
+		            CheckSun = currentByte;	
+		            break;
+		        case 9:
+		            CheckSun += (currentByte*0x100);
+		            break;
                 }
                 packageBuffer[recvPos++] = currentByte;
             }
@@ -759,14 +658,12 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
                  getData(recvBuffer, recvSize);
 
                 for (size_t pos = 0; pos < recvSize; ++pos) {
-#if(CheckSum_Use)
                     if(recvPos%2 == 1){
-			Valu8Tou16 += recvBuffer[pos]*0x100;
-			CheckSunCal ^= Valu8Tou16;
-		    }else{
-			Valu8Tou16 = recvBuffer[pos];	
-		    }
-#endif
+			            Valu8Tou16 += recvBuffer[pos]*0x100;
+			            CheckSunCal ^= Valu8Tou16;
+		            }else{
+			            Valu8Tou16 = recvBuffer[pos];	
+		            }
                     packageBuffer[package_recvPos+recvPos] = recvBuffer[pos];
                     recvPos++;
                 }
@@ -774,24 +671,21 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
                     package_recvPos += recvPos;
                     break;
                 }
-              }
-              if(package_Sample_Num*PackageSampleBytes != recvPos){
+            }
+            if(package_Sample_Num*PackageSampleBytes != recvPos){
                 return -1;
-              }
-         } else {
+            }
+        } else {
               return -1;
-         }
-#if(CheckSum_Use)
-         CheckSunCal ^= SampleNumlAndCTCal;
-	 CheckSunCal ^= LastSampleAngleCal;
+        }
+        CheckSunCal ^= SampleNumlAndCTCal;
+        CheckSunCal ^= LastSampleAngleCal;
 
-	 if(CheckSunCal != CheckSun)
-	 {	
-	 	CheckSunResult = false;
-	 }else{
-		CheckSunResult = true;
-	 }
-#endif
+        if(CheckSunCal != CheckSun){	
+            CheckSunResult = false;
+	    }else{
+		    CheckSunResult = true;
+        }
 
     }
 
@@ -802,23 +696,25 @@ int Flashgo::waitPackage(node_info * node, u_int32_t timeout)
     }
 
     if(CheckSunResult == true){
-
         (*node).distance_q2 = package.packageSampleDistance[package_Sample_Index];
-	    #if 1
-            if((*node).distance_q2/4 != 0)
-            {
-                AngleCorrectForDistance = (int32_t)(((atan(((21.8*(155.3 - ((*node).distance_q2/4)) )/155.3)/((*node).distance_q2/4)))*180.0/3.1415) * 64.0);
+        if((*node).distance_q2/4 != 0){
+            AngleCorrectForDistance = (int32_t)(((atan(((21.8*(155.3 - ((*node).distance_q2/4)) )/155.3)/((*node).distance_q2/4)))*180.0/3.1415) * 64.0);
+        }else{
+            AngleCorrectForDistance = 0;		
+        }
+        if((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index + AngleCorrectForDistance) < 0){
+            (*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index + AngleCorrectForDistance + 360*64)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
+        }else{
+            if((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index + AngleCorrectForDistance) > 360*64){
+                (*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index + AngleCorrectForDistance - 360*64)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
             }else{
-                AngleCorrectForDistance = 0;		
-            }
-            (*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index + AngleCorrectForDistance)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
-            #else
-            (*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
-            #endif
+                (*node).angle_q6_checkbit = ((FirstSampleAngle + IntervalSampleAngle*package_Sample_Index + AngleCorrectForDistance)<<1) + LIDAR_RESP_MEASUREMENT_CHECKBIT;
+            } 
+        }
     }else{
-	(*node).sync_quality = Node_Default_Quality + Node_NotSync;
-	(*node).angle_q6_checkbit = LIDAR_RESP_MEASUREMENT_CHECKBIT;
-	(*node).distance_q2 = 0;
+	    (*node).sync_quality = Node_Default_Quality + Node_NotSync;
+	    (*node).angle_q6_checkbit = LIDAR_RESP_MEASUREMENT_CHECKBIT;
+	    (*node).distance_q2 = 0;
     }
 
     package_Sample_Index++;
@@ -854,8 +750,6 @@ int Flashgo::waitScanData(node_info * nodebuffer, size_t & count, u_int32_t time
     count = recvNodeCount;
     return -1;
 }
-
-#endif
 
 int Flashgo::grabScanData(node_info * nodebuffer, size_t & count)
 {
@@ -998,32 +892,28 @@ int Flashgo::getEAI( u_int32_t timeout)
     if (!isConnected) return -2;
 
     disableDataGrabbing();
+	if ((ans = sendCommand(LIDAR_CMD_GET_EAI)) != 0) {
+		return ans;
+	}
 
-    {
-        if ((ans = sendCommand(LIDAR_CMD_GET_EAI)) != 0) {
-            return ans;
-        }
+	lidar_ans_header response_header;
+	if ((ans = waitResponseHeader(&response_header, timeout)) != 0) {
+		return ans;
+	}
+	if (response_header.size < 3) {
+		return -3;
+	}
 
-        lidar_ans_header response_header;
-        if ((ans = waitResponseHeader(&response_header, timeout)) != 0) {
-            return ans;
-        }
-        if (response_header.size < 3) {
-            return -3;
-        }
+	if (waitForData(response_header.size, timeout) != 0) {
+		return -1;
+	}
 
-        if (waitForData(response_header.size, timeout) != 0) {
-            return -1;
-        }
-
-        char eaiInfo[3]={0};
-        getData(reinterpret_cast<u_int8_t *>(&eaiInfo), sizeof(eaiInfo));
+	char eaiInfo[3]={0};
+	getData(reinterpret_cast<u_int8_t *>(&eaiInfo), sizeof(eaiInfo));
 
 	//fprintf(stderr, " eaiInfo : %s \n" ,eaiInfo);
-        if(eaiInfo[0]=='E' && eaiInfo[1]=='A' && eaiInfo[2]=='I'){
-            return 0;
-        }
-
-    }
+	if(eaiInfo[0]=='E' && eaiInfo[1]=='A' && eaiInfo[2]=='I'){
+		return 0;
+	}
     return -2;
 }

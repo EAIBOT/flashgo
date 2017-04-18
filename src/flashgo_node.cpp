@@ -21,7 +21,7 @@
 
 #define NODE_COUNTS 720
 #define EACH_ANGLE 0.5
-#define DELAY_SECONDS 10
+#define DELAY_SECONDS 20
 #define DEG2RAD(x) ((x)*M_PI/180.)
 
 Flashgo * drv = NULL;

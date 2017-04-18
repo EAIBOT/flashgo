@@ -51,8 +51,6 @@
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
 #endif
 
-#define ScanDataProtocol 1
-#define PrintfEnable 0
 #define PackageSampleMaxLngth 0x100
 typedef enum
 {
@@ -63,15 +61,7 @@ typedef enum
 #define Node_Default_Quality (10<<2)
 #define Node_Sync 1
 #define Node_NotSync 2
-
-#define CheckSum_Use 1
-
-#if(CheckSum_Use)
 #define PackagePaidBytes 10
-#else
-#define PackagePaidBytes 8
-#endif
-
 #define PackageSampleBytes 2
 #define PH 0x55AA
 
@@ -81,7 +71,6 @@ struct node_info{
     u_int16_t   distance_q2;
 } __attribute__((packed)) ;
 
-#if(CheckSum_Use)
 struct node_package {
     u_int16_t  package_Head;
     u_int8_t   package_CT;
@@ -91,17 +80,6 @@ struct node_package {
     u_int16_t  checkSum;
     u_int16_t  packageSampleDistance[PackageSampleMaxLngth];
 } __attribute__((packed)) ;
-
-#else
-struct node_package {
-    u_int16_t  package_Head;
-    u_int8_t   package_CT;
-    u_int8_t   nowPackageNum;
-    u_int16_t  packageFirstSampleAngle;
-    u_int16_t  packageLastSampleAngle;
-    u_int16_t  packageSampleDistance[PackageSampleMaxLngth];
-} __attribute__((packed)) ;
-#endif
 
 struct device_info{
     u_int8_t   model;
@@ -161,11 +139,7 @@ public:
     int getEAI(u_int32_t timeout = DEFAULT_TIMEOUT);
 
 protected:
-#if(ScanDataProtocol == 0)
-    int waitNode(node_info * node, u_int32_t timeout = DEFAULT_TIMEOUT);
-#else
     int waitPackage(node_info * node, u_int32_t timeout = DEFAULT_TIMEOUT);
-#endif
     int waitScanData(node_info * nodebuffer, size_t & count, u_int32_t timeout = DEFAULT_TIMEOUT);
     int cacheScanData();
     int sendCommand(u_int8_t cmd, const void * payload = NULL, size_t payloadsize = 0);
