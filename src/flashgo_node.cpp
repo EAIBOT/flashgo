@@ -21,7 +21,7 @@
 
 #define NODE_COUNTS 720
 #define EACH_ANGLE 0.5
-#define DELAY_SECONDS 20
+#define DELAY_SECONDS 26
 #define DEG2RAD(x) ((x)*M_PI/180.)
 
 Flashgo * drv = NULL;
@@ -72,29 +72,6 @@ void publish_scan(ros::Publisher *pub,
 
     pub->publish(scan_msg);
 }
-
-bool checkFlashLidarHealth(Flashgo * drv)
-{
-    int op_result;
-    device_health healthinfo;
-
-    op_result = drv->getHealth(healthinfo);
-    if (op_result == 0) { 
-        printf("EAI INFO : Now Flash Lidar is running correctly ! .......\n");
-        
-        if (healthinfo.status == 2) {
-            fprintf(stderr, "Error, Flash Lidar internal error detected. Please reboot the device to retry.\n");
-            return false;
-        } else {
-            return true;
-        }
-
-    } else {
-        fprintf(stderr, "Error, cannot retrieve Flash Lidar health code: %x\n", op_result);
-        return false;
-    }
-}
-
 
 std::vector<int> split(const std::string &s, char delim) {
     std::vector<int> elems;
@@ -156,44 +133,18 @@ int main(int argc, char * argv[]) {
             seconds = seconds + 2;
             drv->disconnect();
             op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
-            fprintf(stdout, "EAI Info, connect to the port %s  after %d s .\n", serial_port.c_str() , seconds);
-    	    if (op_result != -1) {
-	        int isEAI = drv->getEAI();
-	        if(isEAI != 0){
-		    fprintf(stderr, "EAI Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-		    return -1;
-	        }
-                break;
-	    }
+            fprintf(stdout, "EAI Info, try to connect the port %s again  after %d s .\n", serial_port.c_str() , seconds);
         }
         
         if(seconds > DELAY_SECONDS){
-            fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
+            fprintf(stderr, "EAI Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
             return -1;
         }
-    }else{
-        int isEAI = drv->getEAI();
-        if(isEAI != 0){
-	    drv->disconnect();
-            op_result = drv->connect(serial_port.c_str(), (u_int32_t)serial_baudrate);
-    	    if (op_result == -1) {
-	        fprintf(stderr, "Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-	        return -1;
-            }else{
-	        isEAI = drv->getEAI();
-	        if(isEAI != 0){
-		    fprintf(stderr, "EAI Error, cannot bind to the specified serial port %s.\n" , serial_port.c_str());
-		    return -1;
-	        }
-	    }
-        }
     }
 
-    if (!checkFlashLidarHealth(drv)) {
-        return -1;
-    }
-
+    fprintf(stdout, "EAI Info, connected the port %s , start to scan ......\n", serial_port.c_str());
     drv->startScan();
+    fprintf(stdout, "EAI Info, Now Flash Lidar is scanning ......\n", serial_port.c_str());
 
     ros::Time start_scan_time;
     ros::Time end_scan_time;

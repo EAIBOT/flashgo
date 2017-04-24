@@ -1,4 +1,4 @@
-FLASH LIDAR ROS PACKAGE V2.2.0
+FLASH LIDAR ROS PACKAGE V2.2.1
 =====================================================================
 
 ROS node and test application for FLASH LIDAR
