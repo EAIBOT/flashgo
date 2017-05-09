@@ -144,7 +144,7 @@ int main(int argc, char * argv[]) {
 
     fprintf(stdout, "EAI Info, connected the port %s , start to scan ......\n", serial_port.c_str());
     drv->startScan();
-    fprintf(stdout, "EAI Info, Now Flash Lidar is scanning ......\n", serial_port.c_str());
+    fprintf(stdout, "EAI Info, Now Flash Lidar is scanning ......\n");
 
     ros::Time start_scan_time;
     ros::Time end_scan_time;
