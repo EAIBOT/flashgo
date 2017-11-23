@@ -136,7 +136,6 @@ public:
     void simpleScanData(std::vector<scanDot> * scan_data , node_info *buffer, size_t count);
     int  lock(unsigned long timeout = 0xFFFFFFFF);
     void releaseThreadLock();
-    int getEAI(u_int32_t timeout = DEFAULT_TIMEOUT);
 
 protected:
     int waitPackage(node_info * node, u_int32_t timeout = DEFAULT_TIMEOUT);
@@ -154,6 +153,7 @@ protected:
 public:
     bool     isConnected;
     bool     isScanning;
+    bool     isThreadOn;
     enum {
         DEFAULT_TIMEOUT = 2000, //2000 ms
         MAX_SCAN_NODES = 2048,

@@ -164,16 +164,18 @@ target_link_libraries(flashgo_client
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS  flashgo_node  flashgo_client
-    ARCHIVE  DESTINATION  ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY  DESTINATION  ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME  DESTINATION  ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# install(TARGETS flashgo flashgo_node
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
-install(DIRECTORY  launch  startup
-    DESTINATION  ${CATKIN_PACKAGE_SHARE_DESTINATION}
-    USE_SOURCE_PERMISSIONS
-)
+## Mark cpp header files for installation
+# install(DIRECTORY include/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.h"
+#   PATTERN ".svn" EXCLUDE
+# )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
