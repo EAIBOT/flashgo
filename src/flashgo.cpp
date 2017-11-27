@@ -1,4 +1,6 @@
 #include "flashgo.h"
+#include "event.h"
+#include "locker.h"
 
 static int serial_fd;
 static pthread_t threadId;
@@ -6,37 +8,38 @@ size_t required_tx_cnt;
 size_t required_rx_cnt;
 u_int32_t _baudrate;
 
+Flashgo* Flashgo::_impl = NULL;
+
 Flashgo::Flashgo()
 {
     isConnected = false;
     isScanning = false;
     isThreadOn = false;
-    pthread_mutex_init(&_lock, NULL);
 }
 
 Flashgo::~Flashgo()
 {
-    disconnect();
+    {
+	ScopedLocker l(_scanning_lock);
+    	isScanning = false;
+    }
+
+    if(isThreadOn||threadId){
+        if(threadId)
+            pthread_join(threadId , NULL);
+    }
 }
 
-Flashgo * Flashgo::initDriver()
-{
-    return new Flashgo();
-}
-
-void Flashgo::DestroyDriver(Flashgo * drv)
-{
-    delete drv;
-}
 
 int Flashgo::connect(const char * port_path, u_int32_t baudrate)
 {
     _baudrate = baudrate;
     if (isConnected){
-        return 1;
+        close(serial_fd);
     }
 
     {
+        ScopedLocker l(_lock);
         if (serial_fd != -1) {
             close(serial_fd);
         }
@@ -103,7 +106,13 @@ void Flashgo::disconnect()
     }
     stop();
     if (serial_fd != -1) {
-        close(serial_fd);
+	int ret;
+        ret = close(serial_fd);
+	if(ret == 0){
+	    serial_fd = -1;
+	}else{
+	    THROW (IOException, errno);
+	}
     }
     isConnected = false;
     serial_fd = -1;
@@ -141,9 +150,15 @@ u_int32_t Flashgo::getTermBaudBitmap(u_int32_t baud)
 
 void Flashgo::disableDataGrabbing()
 {
-    isScanning = false;
+    {
+	ScopedLocker l(_scanning_lock);
+    	isScanning = false;
+    }
+
     if(isThreadOn){
-        pthread_join(threadId , NULL);
+	if(threadId){
+            pthread_join(threadId , NULL);
+	}
     }
 }
 
@@ -298,6 +313,7 @@ int Flashgo::waitForData(size_t data_count, u_int32_t timeout, size_t * returned
 
     if ( isConnected ){
         if ( ioctl(serial_fd, FIONREAD, returned_size) == -1) {
+	    THROW (IOException, errno);
             return -2;
         }
         if (*returned_size >= data_count){
@@ -308,12 +324,19 @@ int Flashgo::waitForData(size_t data_count, u_int32_t timeout, size_t * returned
     while (isConnected) {
         int n = select(max_fd, &input_set, NULL, NULL, &timeout_val);
         if (n < 0){
-            return -2;
+	    // Select was interrupted
+    	   if (errno == EINTR) {
+     	       return -1;
+    	   }
+    	   // Otherwise there was some error
+    	   THROW (IOException, errno);
+           return -2;
         }else if (n == 0)  {
             return -1;
         } else {
             assert (FD_ISSET(serial_fd, &input_set));
             if ( ioctl(serial_fd, FIONREAD, returned_size) == -1) {
+	        THROW (IOException, errno);
                 return -2;
             }
 
@@ -328,6 +351,7 @@ int Flashgo::waitForData(size_t data_count, u_int32_t timeout, size_t * returned
             }
         }
     }
+    THROW (IOException, errno);
     return -2;
 }
 
@@ -375,6 +399,7 @@ int Flashgo::getDeviceInfo(device_info & info, u_int32_t timeout)
 
     disableDataGrabbing();
     {
+        ScopedLocker l(_lock);
         if ((ans = sendCommand(LIDAR_CMD_GET_DEVICE_INFO)) != 0) {
             return ans;
         }
@@ -412,6 +437,7 @@ int Flashgo::startScan(bool force, u_int32_t timeout )
 
     stop();
     {
+        ScopedLocker l(_lock);
         if ((ans = sendCommand(force?LIDAR_CMD_FORCE_SCAN:LIDAR_CMD_SCAN)) != 0) {
             return ans;
         }
@@ -460,8 +486,14 @@ int Flashgo::stop()
     size_t     count = 128;
 
     disableDataGrabbing();
-    sendCommand(LIDAR_CMD_FORCE_STOP);
+    {
+	ScopedLocker l(_lock);
+	ans = sendCommand(LIDAR_CMD_FORCE_STOP);
+    	if(ans != 0)
+            return ans;
+    }
 
+    ScopedLocker l(_lock);
     while(true) {
         if ((ans = waitScanData(local_buf, count ,10)) != 0 ) {
             if (ans == -1) {
@@ -489,7 +521,11 @@ int Flashgo::cacheScanData()
     while(isScanning) {
         if ((ans=waitScanData(local_buf, count)) != 0) {
             if (ans != -1) {
-                isScanning = false;
+		fprintf(stderr, "exit scanning thread!!");
+                {
+		    ScopedLocker l(_scanning_lock);
+    		    isScanning = false;
+    		}
                 return -2;
             }
         }
@@ -497,20 +533,24 @@ int Flashgo::cacheScanData()
         for (size_t pos = 0; pos < count; ++pos) {
             if (local_buf[pos].sync_quality & LIDAR_RESP_MEASUREMENT_SYNCBIT) {
                 if ((local_scan[0].sync_quality & LIDAR_RESP_MEASUREMENT_SYNCBIT)) {
-                    this->lock();
+		    _lock.lock();//timeout lock, wait resource copy 
                     memcpy(scan_node_buf, local_scan, scan_count*sizeof(node_info));
                     scan_node_count = scan_count;
-                    pthread_mutex_unlock(&_lock);
+		    _dataEvt.set();
+		    _lock.unlock();
                 }
                 scan_count = 0;
             }
             local_scan[scan_count++] = local_buf[pos];
-            if (scan_count == sizeof(local_scan)) scan_count-=1;
+            if (scan_count == _countof(local_scan)) scan_count-=1;
         }
 
 
     }
-    isScanning = false;
+    {
+	ScopedLocker l(_scanning_lock);
+    	isScanning = false;
+    }
     return 0;
 }
 
@@ -761,17 +801,29 @@ int Flashgo::waitScanData(node_info * nodebuffer, size_t & count, u_int32_t time
     return -1;
 }
 
-int Flashgo::grabScanData(node_info * nodebuffer, size_t & count)
+int Flashgo::grabScanData(node_info * nodebuffer, size_t & count, u_int32_t timeout)
 {
-
-    if(scan_node_count == 0) {
-        return -2;
+    switch (_dataEvt.wait(timeout))
+    {
+	case Event::EVENT_TIMEOUT:
+            count = 0;
+       	    return -2;
+	case Event::EVENT_OK:
+	    {
+        	if(scan_node_count == 0) {
+           	    return -2;
+                }
+        	size_t size_to_copy = min(count, scan_node_count);
+		ScopedLocker l(_lock);
+        	memcpy(nodebuffer, scan_node_buf, size_to_copy*sizeof(node_info));
+        	count = size_to_copy;
+        	scan_node_count = 0;
+	    }
+	    return 0;
+	default:
+            count = 0;
+            return -1;
     }
-    size_t size_to_copy = min(count, scan_node_count);
-    memcpy(nodebuffer, scan_node_buf, size_to_copy*sizeof(node_info));
-    count = size_to_copy;
-    scan_node_count = 0;
-    return 0;
 }
 
 void Flashgo::simpleScanData(std::vector<scanDot> *scan_data , node_info *buffer, size_t count)
@@ -855,42 +907,8 @@ int Flashgo::ascendScanData(node_info * nodebuffer, size_t count)
     }
 
     memcpy(nodebuffer, tmpbuffer, count*sizeof(node_info));
-    delete tmpbuffer;
+    delete[] tmpbuffer;
 
     return 0;
-}
-
-int  Flashgo::lock(unsigned long timeout)
-{
-    if (timeout == 0xFFFFFFFF){
-        if (pthread_mutex_lock(&_lock) == 0) return 1;
-    } else if (timeout == 0) {
-        if (pthread_mutex_trylock(&_lock) == 0) return 1;
-    } else {
-        struct timespec wait_time;
-        timeval now;
-        gettimeofday(&now,NULL);
-
-        wait_time.tv_sec = timeout/1000 + now.tv_sec;
-        wait_time.tv_nsec = (timeout%1000)*1000000 + now.tv_usec*1000;
-
-        if (wait_time.tv_nsec >= 1000000000) {
-           ++wait_time.tv_sec;
-           wait_time.tv_nsec -= 1000000000;
-        }
-        switch (pthread_mutex_timedlock(&_lock,&wait_time)) {
-        case 0:
-            return 1;
-        case ETIMEDOUT:
-            return -1;
-        }
-    }
-    return 0;
-}
-
-void Flashgo::releaseThreadLock()
-{
-    pthread_mutex_unlock(&_lock);
-    pthread_mutex_destroy(&_lock);
 }
 
